@@ -3,6 +3,7 @@ import matplotlib.pyplot as plt
 from matplotlib.widgets import Slider, Button, RadioButtons
 import numpy as np
 
+
 class PID_Controller:
     def __init__(self, p, i, d):
         self.kP = p
@@ -51,9 +52,11 @@ class PID_Controller:
 
 
 class Simulation():
-    def __init__(self):
+    def __init__(self, damping):
         self.position = 0
         self.velocity = 0
+
+        self.damping = damping
 
     def reset(self):
         self.position = 0
@@ -61,26 +64,40 @@ class Simulation():
 
     def simulation_update(self, value, time_step):
         self.velocity += value
+        self.velocity *= self.damping
+
         self.position += self.velocity * time_step
 
 
-simulation = Simulation()
-pid = PID_Controller(1, 0, 0.5)
+simulation = Simulation(0.99)
+pid = PID_Controller(0, 0, 0)
 
 target_position = 0
 speed = 5
 amps = 10
 
 time_step = 0.01
-graph_size = 100
+graph_size = 1000
 
 plt.ion()
 
 fig, ax = plt.subplots()
 plt.subplots_adjust(bottom=0.3, left=0.2)
 
-simulation_position_line, = ax.plot(range(graph_size), range(graph_size), label="Simulation Position")
-target_line, = ax.plot(range(graph_size), [target_position for _ in range(graph_size)], label="Simulation Position")
+
+y_span = [2*i-graph_size/2 for i in range(graph_size)]
+
+simulation_position_line, = ax.plot(
+    range(graph_size),
+    y_span,
+    label="Simulation Position"
+)
+
+target_line, = ax.plot(
+    range(graph_size),
+    [target_position for _ in range(graph_size)],
+    label="Simulation Position"
+)
 
 ax_p = fig.add_axes([0.05, 0.15, 0.9, 0.03])
 ax_i = fig.add_axes([0.05, 0.1, 0.9, 0.03])
@@ -91,14 +108,16 @@ i_slider = Slider(ax_i, "i", 0, 1, valinit=0)
 d_slider = Slider(ax_d, "d", 0, 10, valinit=0)
 
 ax_speed = fig.add_axes([0.025, 0.25, 0.03, 0.65])
-speed_slider = Slider(ax_speed, "speed", 0, max(graph_size/100, 10), valinit=max(graph_size/200, 1), orientation="vertical")
+speed_slider = Slider(
+    ax_speed, "speed", 0, max(graph_size/100, 10), valinit=max(graph_size/200, 1), orientation="vertical"
+)
 
 ax_target = fig.add_axes([0.075, 0.25, 0.03, 0.65])
-target_slider = Slider(ax_target, "target", 0, graph_size, valinit=graph_size/2, orientation="vertical")
+target_slider = Slider(
+    ax_target, "target", min(y_span), max(y_span), valinit=graph_size/2, orientation="vertical"
+)
 
-start_time = time.time()
-
-simulation_positions = [0 for i in range(graph_size)]
+simulation_positions = [0 for _ in range(graph_size)]
 
 
 def update():
